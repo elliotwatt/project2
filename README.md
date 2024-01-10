@@ -1,6 +1,6 @@
 
 
-# Introduction
+# Group One Project 2
 Group one is coding a trading algorithm that will focus on using one metric, delta divergence, to enter and exit short-term futures trades. The algo will exclusively trade NASDAQ mini (NQ) futures, and our group will spend most of our time fine-tuning this strategy to determine the ideal parameters with which to control this algorithm. We define success as beating the S&P 500 and beating the simpler trading strategy of buying and holding the NASDAQ mini future over the period of time that we used to test it.
 
 ### Objectives
@@ -10,6 +10,7 @@ Machine Learning: We will use machine learning to backtest and educate our algo 
 Financial metrics for trading Algorithm
 Delta divergence is a momentum indicator particularly common in the context of order flow analysis. It measures the cumulative delta (difference between buying and selling volume) and the movement of the price of an asset. We hypothesize that an increase in the absolute value of delta divergence indicates a higher probability of predicting which direction the asset will move. An increased positive delta divergence indicates that there are significantly more buyers than sellers, but the price does not reflect the heightened presence of buyers. Therefore, the price is likely to increase, or ‘catch up’ to the buyers. When the delta divergence is negative, this indicates that there are significantly more sellers than buyers, but the price either increases or does not drop as expected. Therefore, we would take this negative divergence as a bearish indicator that the price will drop, or ‘catch up’ to the heightened presence of sellers.
 Others to be determined, starting with MACD.
+
 ### Tasks to complete:
 * Research which platform to use
 * API access to chosen platform
