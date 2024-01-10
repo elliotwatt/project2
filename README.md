@@ -20,8 +20,8 @@ Machine Learning: We will use machine learning to backtest and educate our algo 
 * Repeat steps until satisfactory result. We define success as beating the S&P 500 as well as beating the simpler trading strategy of buying and holding the NASDAQ mini future over the period of time that we used to test it.
 
 ### Group Members
-Elliot Watt
-Gino Petrosian
-Jenny Trieu
-Jorge Miguel Garcia
-David Taylor
+* Elliot Watt
+* Gino Petrosian
+* Jenny Trieu
+* Jorge Miguel Garcia
+* David Taylor
