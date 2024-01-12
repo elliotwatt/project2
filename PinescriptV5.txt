@@ -1,8 +1,8 @@
 // This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © GreenDayTrade
 
-//@version=5
-strategy("Class Testing", overlay=true, margin_long=0, margin_short=0, pyramiding = 2)
+// @version=5
+strategy("Class Testing", overlay=true, margin_long=0, margin_short=0)
 
 
 // Input variables for candle colors
@@ -69,8 +69,7 @@ macdConditionshort = ta.crossover (macdLine, macdLine2)
 macdConditionlong = ta.crossover (macdLine2, macdLine)
 longCondition = ta.crossover(ta.sma(close, 14), ta.sma(close, 28))
 
-profitTargetS = strategy.position_avg_price * 1.15 // 15% profit target
-stopLossS = strategy.position_avg_price * 0.92 // 8% stop loss
+
 
 
 
@@ -152,10 +151,15 @@ upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.teal, off
 lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
 fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.teal, 95)    , display = showBand_3 ? display.all : display.none)
 
+plot(upperBandValue1, "upper STD1", color=color.green)
+plot(lowerBandValue1, "lower STD1", color=color.green)
+plot(upperBandValue2, "upper STD2", color=color.olive)
+plot(lowerBandValue2, "lower STD2", color=color.olive)
+plot(upperBandValue3, "upper STD3", color=color.teal)
+plot(lowerBandValue3, "lower STD3", color=color.teal)
 
 // Conditions
-vwapShortcond = close > upperBandValue1
-
+vwapShort1 = close > upperBandValue1
 vwapshort2 = close > upperBandValue2
 vwapshort3 = close > upperBandValue3
 
@@ -165,45 +169,58 @@ vwapLong3 = close < lowerBandValue3
 
 // Stop Loss/ Take profit
 
-// profitTargetL = strategy.position_avg_price * 1.15 // 15% profit target
-// stopLossL = strategy.position_avg_price * 0.92 // 8% stop loss
 
-profitTargetL = strategy.position_avg_price * 1.15 // 15% profit target
+profitTarget = strategy.openprofit * 1.15 // 15% profit target
+trailStopLoss = strategy.position_avg_price * 0.95 // 5% stop loss
 
 
-// if (bearishDivergence and vwapShortcond)
-//     strategy.entry("My Short Entry Id", strategy.short)
 
-// if (bullishDivergence and vwapLong1)
-//     strategy.entry("My Long Entry Id", strategy.long)
+
+
+if (bearishDivergence and vwapShort1)
+    strategy.entry("1st deviation short signal", strategy.short, qty = 3)
+	strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", trail_points = trailStopLoss, trail_offset = 0, profit = profitTarget)
+	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTargetL)
+
+if (bullishDivergence and vwapLong1)
+    strategy.entry("1st deviation long signal", strategy.long, qty = 3)
+	strategy.exit(id = "1st deviation close long signal", from_entry = "1st deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
+	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation long signal", profit = profitTargetL)
 
 if (bearishDivergence and vwapshort2)
-    strategy.entry("My Short Entry Id", strategy.short)
+    strategy.entry("2nd deviation short signal", strategy.short, qty = 3)
+	strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
+	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", profit = profitTargetL)
 
 if (bullishDivergence and vwapLong2)
-    strategy.entry("My Long Entry Id", strategy.long)
+    strategy.entry("2nd devition long signal", strategy.long, qty = 3)
+	strategy.exit(id = "2nd deviation close long signal", from_entry = "2nd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
+	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation long signal", profit = profitTargetL)
 
 if (bearishDivergence and vwapshort3)
-    strategy.entry("My Short Entry Id", strategy.short)
+    strategy.entry("3rd deviation short signal", strategy.short, qty = 3)
+	strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
+	//strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", profit = profitTargetL)
 
 if (bullishDivergence and vwapLong3)
-    strategy.entry("My Long Entry Id", strategy.long)
-
-// if (stopLossL)
-// 	strategy.exit("Profit Target Met", trail_offset = 0.25)
-
-// stopLossL = strategy.position_avg_price * 0.95 // 5% stop loss
-// trailPerc = close 
-// trailPrice = strategy.position_avg_price * (1 - trailPerc)
-// stoploss2 = close * .95
-
-
-// Entering positions
-// if (longCondition)
-//     strategy.entry("Long", strategy.long)
-// if (shortCondition)
-//     strategy.entry("Short", strategy.short)
-
+    strategy.entry("3rd deviation long signal", strategy.long, qty = 3)
+	strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
+	//strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", profit = profitTargetL)
 // Setting a 5% trailing stop loss
-trailStopLoss = close * 0.15
-strategy.exit("Exit Long", "Long", trail_points = trailStopLoss, trail_offset = 0)
+
+// Define your trailing stop offset as a percentage
+trail_offset_percentage = input.float(2, title="Trailing Stop Offset (%)") / 100
+
+// Calculate the trailing stop level as a percentage of the close price
+trail_stop_level = ta.valuewhen(cross(close, close[1]), close) * (1 - trail_offset_percentage)
+
+// Define your entry condition (replace this with your actual entry condition)
+entry_condition = ta.crossover(ta.sma(close, 10), ta.sma(close, 20))
+
+// Implement the trailing stop using strategy.exit
+strategy.exit("Trailing Stop", from_entry=entry_condition, trail_offset=trail_stop_level)
+
+plotshape(series=entry_condition, title="Buy Signal", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
+
+// Plot the trailing stop level on the chart for visualization (optional)
+plot(trail_stop_level, title="Trailing Stop Level", color=color.red)
