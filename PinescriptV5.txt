@@ -1,428 +1,75 @@
 // This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © GreenDayTrade
-
-// @version=5
-strategy("Class Testing", overlay=true, margin_long=0, margin_short=0)
-
-
-// Input variables for candle colors
-candleBullColor = input.color(color.green, title='Bullish Candle Color', group='Candle Colors')
-candleBearColor = input.color(color.red, title='Bearish Candle Color', group='Candle Colors')
-
-// Input variables for divergence colors
-bullishDivergenceColor = input.color(color.rgb(255, 209, 58), title='Bullish Divergence Color', group='Divergence Colors')
-bearishDivergenceColor = input.color(color.rgb(73, 173, 255), title='Bearish Divergence Color', group='Divergence Colors')
-
-var float buyVolume = 0.0
-var float sellVolume = 0.0
-var float delta = 0.0
-
-// Calculate Delta
-buyVolume := math.sum(volume * (close >= open ? 1 : 0), 1)
-sellVolume := math.sum(volume * (close < open ? 1 : 0), 1)
-delta := buyVolume - sellVolume
-
-// Moving Averages of Cumulative Delta
-cumulativeDelta = ta.cum(delta)
-maLength1 = input(20, title="Moving Average Length 1")
-maLength2 = input(50, title="Moving Average Length 2")
-maCumulativeDelta1 = ta.sma(cumulativeDelta, maLength1)
-maCumulativeDelta2 = ta.sma(cumulativeDelta, maLength2)
-
-// Color candles based on delta
-barColor = delta >= 0 ? candleBullColor : candleBearColor
-
-// Convert Cumulative Delta to candles
-cdOpen = cumulativeDelta[1]
-cdClose = cumulativeDelta
-cdHigh = math.max(cdOpen, cdClose)
-cdLow = math.min(cdOpen, cdClose)
-
-// Detect Divergences
-bullishDivergence = close > open and delta < delta[1]
-bearishDivergence = close < open and delta > delta[1]
-
-// Color the delta candles based on divergences
-deltaColor = delta >= 0 ? (bullishDivergence ? bullishDivergenceColor : candleBullColor) : (bearishDivergence ? bearishDivergenceColor : candleBearColor)
-
-// Plot Cumulative Delta candles
-plotcandle(cdOpen, cdHigh, cdLow, cdClose, title='Cumulative Delta Candles', color=deltaColor, wickcolor=deltaColor)
-
-// Plot Moving Averages of Cumulative Delta as line charts
-plot(maCumulativeDelta1, color=color.rgb(21, 255, 0), title="MA Cumulative Delta 1")
-plot(maCumulativeDelta2, color=color.rgb(255, 0, 81), title="MA Cumulative Delta 2")
-
-//MACD
-fastLength = 12
-slowLength = 26
-signalSmoothing = 1
-macdLine = ta.ema(close, fastLength) - ta.ema(close, slowLength)
-signalLine = ta.ema(macdLine, signalSmoothing)
-//Faster
-fastLength2 = 5
-slowLength2 = 13
-signalSmoothing2 = 1
-macdLine2 = ta.ema(close, fastLength2) - ta.ema(close,slowLength2)
-//MACD Conditions
-//macdCondition = ta.crossover(macdLine, signalLine) and ta.crossover(ta.lowest(close, 40), ta.lowest(macdLine, 40))
-macdConditionshort = ta.crossover (macdLine, macdLine2)
-macdConditionlong = ta.crossover (macdLine2, macdLine)
-longCondition = ta.crossover(ta.sma(close, 14), ta.sma(close, 28))
-
-
-
-
-
-// indicator(title="Volume Weighted Average Price", shorttitle="VWAP", overlay=true, timeframe="", timeframe_gaps=true)
-
-hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings")
-var anchor = input.string(defval = "Session", title="Anchor Period",
- options=["Session", "Week", "Month", "Quarter", "Year", "Decade", "Century", "Earnings", "Dividends", "Splits"], group="VWAP Settings")
-src = input(title = "Source", defval = hlc3, group="VWAP Settings")
-offset = input.int(0, title="Offset", group="VWAP Settings", minval=0)
-
-BANDS_GROUP = "Bands Settings"
-CALC_MODE_TOOLTIP = "Determines the units used to calculate the distance of the bands. When 'Percentage' is selected, a multiplier of 1 means 1%."
-calcModeInput = input.string("Standard Deviation", "Bands Calculation Mode", options = ["Standard Deviation", "Percentage"], group = BANDS_GROUP, tooltip = CALC_MODE_TOOLTIP)
-showBand_1 = input(true, title = "", group = BANDS_GROUP, inline = "band_1")
-bandMult_1 = input.float(1.0, title = "Bands Multiplier #1", group = BANDS_GROUP, inline = "band_1", step = 0.5, minval=0)
-showBand_2 = input(false, title = "", group = BANDS_GROUP, inline = "band_2")
-bandMult_2 = input.float(2.0, title = "Bands Multiplier #2", group = BANDS_GROUP, inline = "band_2", step = 0.5, minval=0)
-showBand_3 = input(false, title = "", group = BANDS_GROUP, inline = "band_3")
-bandMult_3 = input.float(3.0, title = "Bands Multiplier #3", group = BANDS_GROUP, inline = "band_3", step = 0.5, minval=0)
-
-if barstate.islast and ta.cum(volume) == 0
-    runtime.error("No volume is provided by the data vendor.")
-
-new_earnings = request.earnings(syminfo.tickerid, earnings.actual, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
-new_dividends = request.dividends(syminfo.tickerid, dividends.gross, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
-new_split = request.splits(syminfo.tickerid, splits.denominator, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
-
-isNewPeriod = switch anchor
-	"Earnings"  => not na(new_earnings)
-	"Dividends" => not na(new_dividends)
-	"Splits"    => not na(new_split)
-	"Session"   => timeframe.change("D")
-	"Week"      => timeframe.change("W")
-	"Month"     => timeframe.change("M")
-	"Quarter"   => timeframe.change("3M")
-	"Year"      => timeframe.change("12M")
-	"Decade"    => timeframe.change("12M") and year % 10 == 0
-	"Century"   => timeframe.change("12M") and year % 100 == 0
-	=> false
-
-isEsdAnchor = anchor == "Earnings" or anchor == "Dividends" or anchor == "Splits"
-if na(src[1]) and not isEsdAnchor
-	isNewPeriod := true
-
-
-
-float vwapValue = na
-float upperBandValue1 = na
-float lowerBandValue1 = na
-float upperBandValue2 = na
-float lowerBandValue2 = na
-float upperBandValue3 = na
-float lowerBandValue3 = na
-
-if not (hideonDWM and timeframe.isdwm)
-    [_vwap, _stdevUpper, _] = ta.vwap(src, isNewPeriod, 1)
-	vwapValue := _vwap
-    stdevAbs = _stdevUpper - _vwap
-	bandBasis = calcModeInput == "Standard Deviation" ? stdevAbs : _vwap * 0.01
-	upperBandValue1 := _vwap + bandBasis * bandMult_1
-	lowerBandValue1 := _vwap - bandBasis * bandMult_1
-	upperBandValue2 := _vwap + bandBasis * bandMult_2
-	lowerBandValue2 := _vwap - bandBasis * bandMult_2
-	upperBandValue3 := _vwap + bandBasis * bandMult_3
-	lowerBandValue3 := _vwap - bandBasis * bandMult_3
-
-plot(vwapValue, title="VWAP", color=#2962FF, offset=offset)
-
-upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
-lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
-fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color= color.new(color.green, 95)    , display = showBand_1 ? display.all : display.none)
-
-upperBand_2 = plot(upperBandValue2, title="Upper Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
-lowerBand_2 = plot(lowerBandValue2, title="Lower Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
-fill(upperBand_2, lowerBand_2, title="Bands Fill #2", color= color.new(color.olive, 95)    , display = showBand_2 ? display.all : display.none)
-
-upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
-lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
-fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.teal, 95)    , display = showBand_3 ? display.all : display.none)
-
-plot(upperBandValue1, "upper STD1", color=color.green)
-plot(lowerBandValue1, "lower STD1", color=color.green)
-plot(upperBandValue2, "upper STD2", color=color.olive)
-plot(lowerBandValue2, "lower STD2", color=color.olive)
-plot(upperBandValue3, "upper STD3", color=color.teal)
-plot(lowerBandValue3, "lower STD3", color=color.teal)
-
-// Conditions
-vwapShort1 = close > upperBandValue1
-vwapshort2 = close > upperBandValue2
-vwapshort3 = close > upperBandValue3
-
-vwapLong1 = close < lowerBandValue1
-vwapLong2 = close < lowerBandValue2
-vwapLong3 = close < lowerBandValue3
-
-// Stop Loss/ Take profit
-
-
-profitTarget = strategy.openprofit * 1.15 // 15% profit target
-trailStopLoss = strategy.position_avg_price * 0.95 // 5% stop loss
-
-
-
-
-
-if (bearishDivergence and vwapShort1)
-    strategy.entry("1st deviation short signal", strategy.short, qty = 3)
-	strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", trail_points = trailStopLoss, trail_offset = 0, profit = profitTarget)
-	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTargetL)
-
-if (bullishDivergence and vwapLong1)
-    strategy.entry("1st deviation long signal", strategy.long, qty = 3)
-	strategy.exit(id = "1st deviation close long signal", from_entry = "1st deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation long signal", profit = profitTargetL)
-
-if (bearishDivergence and vwapshort2)
-    strategy.entry("2nd deviation short signal", strategy.short, qty = 3)
-	strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", profit = profitTargetL)
-
-if (bullishDivergence and vwapLong2)
-    strategy.entry("2nd devition long signal", strategy.long, qty = 3)
-	strategy.exit(id = "2nd deviation close long signal", from_entry = "2nd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation long signal", profit = profitTargetL)
-
-if (bearishDivergence and vwapshort3)
-    strategy.entry("3rd deviation short signal", strategy.short, qty = 3)
-	strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", profit = profitTargetL)
-
-if (bullishDivergence and vwapLong3)
-    strategy.entry("3rd deviation long signal", strategy.long, qty = 3)
-	strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", profit = profitTargetL)
-// Setting a 5% trailing stop loss
-
-// Define your trailing stop offset as a percentage
-trail_offset_percentage = input.float(2, title="Trailing Stop Offset (%)") / 100
-
-// Calculate the trailing stop level as a percentage of the close price
-trail_stop_level = ta.valuewhen(cross(close, close[1]), close) * (1 - trail_offset_percentage)
-
-// Define your entry condition (replace this with your actual entry condition)
-entry_condition = ta.crossover(ta.sma(close, 10), ta.sma(close, 20))
-
-// Implement the trailing stop using strategy.exit
-strategy.exit("Trailing Stop", from_entry=entry_condition, trail_offset=trail_stop_level)
-
-plotshape(series=entry_condition, title="Buy Signal", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// Plot the trailing stop level on the chart for visualization (optional)
-plot(trail_stop_level, title="Trailing Stop Level", color=color.red)
-
-
-///////////////////////////////////
-Update for 01/16
 //© GreenDayTrade
 
 // a = Define lookback period to be a range of beteen 16 - 50 bars
 //  a2 = Define correction between the divergence in price
-//     a3 = treacked closing price
+//     a3 = treack high closing price and MACD value
 //         a4 = define divergence
-//             
+//             a5 = execute
+//             simplified
 
 //      If a
 //          then a2
 //              then a3
 
+//////////////////////////////////////////
 //@version=5
-indicator("MACD Divergence", shorttitle="MACD Div", overlay=false)
+indicator("MACD Divergence Detector", shorttitle="MACD Div", overlay=true)
 
-// MACD inputs
-fastLength = input(12, title="Fast Length")  // Fast length for MACD calculation
-slowLength = input(26, title="Slow Length")  // Slow length for MACD calculation
-signalSmoothing = input(9, title="Signal Smoothing")  // Signal smoothing for MACD
+// Input for MACD
+fastLength = input.int(12, minval=1, title="Fast Length")
+slowLength = input.int(26, minval=1, title="Slow Length")
+signalSmoothing = input.int(9, minval=1, title="Signal Smoothing")
 
-// Calculate MACD values
 [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
 
-// Pivot Lookback Length and Bar Range for Divergence
-var int lastPricePivotBar = na  // Variable to store the last bar index of pivot high for price
-var int lastMacdPivotBar = na  // Variable to store the last bar index of pivot high for MACD
-minBarRange = input.int(16, "Minimum Bar Range", minval=1)  // Minimum bar range for divergence consideration
-maxBarRange = input.int(50, "Maximum Bar Range", minval=1)  // Maximum bar range for divergence consideration
-pivotLength = input(5, title="Pivot Lookback Length")  // Length to look back for pivot highs
+// Inputs for lookback range
+minLookback = input(16, title="Minimum Lookback Period")
+maxLookback = input(50, title="Maximum Lookback Period")
 
-// Function to find pivot highs
-findPivotHigh(src, length) =>
-    ta.highestbars(src, length) == 0
+// Function to find peaks and troughs within the range
+isHigh = ta.highestbars(high, maxLookback) == 0 and ta.highestbars(high, minLookback) >= 0
+isLow = ta.lowestbars(low, maxLookback) == 0 and ta.lowestbars(low, minLookback) >= 0
 
-// Get pivot highs for price and MACD
-pricePivotHigh = findPivotHigh(high, pivotLength)
-macdPivotHigh = findPivotHigh(macdLine, pivotLength)
+var float lastHighPrice = na
+var float lastHighMacd = na
+var float lastLowPrice = na
+var float lastLowMacd = na
 
-// Update last pivot bar index when a new pivot high is found
-if pricePivotHigh
-    lastPricePivotBar := bar_index
+var float currentHighPrice = na
+var float currentHighMacd = na
+var float currentLowPrice = na
+var float currentLowMacd = na
 
-if macdPivotHigh
-    lastMacdPivotBar := bar_index
+if isHigh
+    currentHighPrice := high
+    currentHighMacd := macdLine
+    if not na(lastHighPrice) and not na(lastHighMacd)
+        if currentHighPrice > lastHighPrice and currentHighMacd < lastHighMacd
+            lastHighPrice := currentHighPrice
+            lastHighMacd := currentHighMacd
 
-// Function to find pivot lows
-findPivotLow(src, length) =>
-    isPivotLow = ta.lowestbars(src, length) == 0
-    if isPivotLow
-        [src[length], bar_index[length]]
-    else
-        [na, na]
+if isLow
+    currentLowPrice := low
+    currentLowMacd := macdLine
+    if not na(lastLowPrice) and not na(lastLowMacd)
+        if currentLowPrice < lastLowPrice and currentLowMacd > lastLowMacd
+            lastLowPrice := currentLowPrice
+            lastLowMacd := currentLowMacd
 
-// Get pivot lows for price and MACD
-[lowPricePivotVal, lowPricePivotBar] = findPivotLow(low, pivotLength)
-[macdPivotVal, macdPivotBar] = findPivotLow(macdLine, pivotLength)
+// Plot bullish divergence
+plotshape(series=isHigh, title="Short Signal", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
 
-// Detect bullish divergence: price makes a lower low, MACD makes a higher low
-bullishDivergence = lowPricePivotVal and macdPivotVal and low[1] < ta.lowest(low, pivotLength * 2)[pivotLength] and macdLine[1] > ta.lowest(macdLine, pivotLength * 2)[pivotLength]
+// Plot bearish divergence
+plotshape(series=isLow, title="Long Signal", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
 
-// Function to check if the divergence is within the specified bar range
-isWithinRange(index) =>
-    index >= minBarRange and index <= maxBarRange
+// Updating last high/low and MACD values
+if isHigh
+    lastHighPrice := high
+    lastHighMacd := macdLine
+else if isLow
+    lastLowPrice := low
+    lastLowMacd := macdLine
 
-// Detect bearish divergence: price makes a higher high, MACD makes a lower high
-bearishDivergence = pricePivotHigh and macdPivotHigh and (high > ta.highest(high, pivotLength * 2)) and (macdLine < ta.highest(macdLine, pivotLength * 2)) and isWithinRange(bar_index - nz(lastPricePivotBar, bar_index)) and isWithinRange(bar_index - nz(lastMacdPivotBar, bar_index))
-
-// Plot the bullish divergence with a green triangle below the price low
-plotshape(series=lowPricePivotVal and bullishDivergence ? low : na, title="Bullish Divergence", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// Plot the bearish divergence with a red triangle above the price high
-plotshape(series=bearishDivergence, title="Bearish Divergence", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
-
-
-// //@version=5
-// indicator("Price-MACD Divergence", shorttitle="Price-MACD Div", overlay=false)
-
-// // MACD inputs
-// fastLength = input(12, title="Fast Length")
-// slowLength = input(26, title="Slow Length")
-// signalSmoothing = input(9, title="Signal Smoothing")
-
-// // Calculate MACD values
-// [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
-
-// // Variables to track price highs, lows, and MACD highs, lows
-// var float priceHigh = na
-// var float priceLow = na
-// var float macdHigh = na
-// var float macdLow = na
-
-// // Track reversals in price
-// var float priceReversal = na
-
-// // Calculate the 15% threshold for reversals
-// threshold = priceHigh * 0.15
-
-// // Track the highest high and lowest low in price, and the MACD value at those price extremes
-// if close > ta.highest(high, 1)
-//     priceHigh := high
-//     macdHigh := macdLine
-
-// if close < ta.lowest(low, 1)
-//     priceLow := low
-//     macdLow := macdLine
-
-// // Track reversals in price
-// if low < threshold
-//     priceReversal := low
-
-// // Track bullish divergences
-// bullishDivergence = high > priceHigh and macdLine > macdHigh and ta.barssince(low <= priceReversal) < 5
-// plotshape(series=bullishDivergence ? low : na, title="Long", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// // Track bearish divergences
-// bearishDivergence = low < priceLow and macdLine < macdLow and ta.barssince(high >= priceReversal) < 5
-// plotshape(series=bearishDivergence ? high : na, title="Short", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
-
-
-// //@version=5
-// indicator("Price-MACD Divergence", shorttitle="Price-MACD Div", overlay=false)
-// fastlength = input(12, title = "Fast Length")
-// slowlength = input(24, title = "Slow Length")
-// signalSmoothing =  input(9,title = "Signal Smoothing")
-// [macdLine, sigLine, _] = ta.macd(close, fastlength, slowlength, signalSmoothing)
-
-
-//////Currently working on////////
-// //@version=5
-// indicator("MACD Divergence Detector", shorttitle="MACD Div", overlay=true)
-
-// // Input for MACD
-// fastLength = input(12, minval=1, title="Fast Length")
-// slowLength = input(26, minval=1, title="Slow Length")
-// signalSmoothing = input(9, minval=1, title="Signal Smoothing")
-
-// [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
-
-// // Inputs for lookback range
-// minLookback = input(16, title="Minimum Lookback Period")
-// maxLookback = input(50, title="Maximum Lookback Period")
-
-// // Function to find peaks and troughs within the range
-// isRecentHigh(highs, lookback) =>
-//     highestIndex = na
-//     for i = 0 to lookback - 1
-//         if not na(highs[i]) and (na(highestIndex) or highs[i] > highs[highestIndex])
-//             highestIndex := i
-//     highestIndex
-
-// isRecentLow(lows, lookback) =>
-//     lowestIndex = na
-//     for i = 0 to lookback - 1
-//         if not na(lows[i]) and (na(lowestIndex) or lows[i] < lows[lowestIndex])
-//             lowestIndex := i
-//     lowestIndex
-
-// // Arrays to store highs and lows
-// var float[] highs = array.new_float(0)
-// var float[] lows = array.new_float(0)
-
-// if bar_index > maxLookback
-//     array.unshift(highs, high)
-//     array.unshift(lows, low)
-//     if array.size(highs) > maxLookback
-//         array.pop(highs)
-//     if array.size(lows) > maxLookback
-//         array.pop(lows)
-
-// // Find recent highs and lows
-// recentHighIndex1 = isRecentHigh(highs, maxLookback)
-// recentLowIndex1 = isRecentLow(lows, maxLookback)
-// recentHighIndex2 = isRecentHigh(highs, recentHighIndex1)
-// recentLowIndex2 = isRecentLow(lows, recentLowIndex1)
-
-// plotshape(series=bar_index - recentHighIndex1 >= minLookback and bar_index - recentHighIndex1 <= maxLookback, title="Recent High", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
-// plotshape(series=bar_index - recentLowIndex1 >= minLookback and bar_index - recentLowIndex1 <= maxLookback, title="Recent Low", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// // Track the highest high and lowest low in price, and the MACD value at those price extremes
-// if close > ta.highest(high, 1)
-//     priceHigh := high
-//     macdHigh := macdLine
-
-// if close < ta.lowest(low, 1)
-//     priceLow := low
-//     macdLow := macdLine
-
-// bullishDivergence = high > priceHigh and macdLine > macdHigh and ta.barssince(low <= priceReversal) < 5
-// plotshape(series=bullishDivergence ? low : na, title="Long", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// // Track bearish divergences
-// bearishDivergence = low < priceLow and macdLine < macdLow and ta.barssince(high >= priceReversal) < 5
-// plotshape(series=bearishDivergence ? high : na, title="Short", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
-
-// plot(macd)
-
-End 1/16 update - Gino
-////////////////////////////////////
+plot(macdLine, title="MACD Line", color=color.blue)
+plot(signalLine, title="Signal Line", color=color.orange)
