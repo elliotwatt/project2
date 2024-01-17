@@ -224,3 +224,205 @@ plotshape(series=entry_condition, title="Buy Signal", location=location.belowbar
 
 // Plot the trailing stop level on the chart for visualization (optional)
 plot(trail_stop_level, title="Trailing Stop Level", color=color.red)
+
+
+///////////////////////////////////
+Update for 01/16
+//© GreenDayTrade
+
+// a = Define lookback period to be a range of beteen 16 - 50 bars
+//  a2 = Define correction between the divergence in price
+//     a3 = treacked closing price
+//         a4 = define divergence
+//             
+
+//      If a
+//          then a2
+//              then a3
+
+//@version=5
+indicator("MACD Divergence", shorttitle="MACD Div", overlay=false)
+
+// MACD inputs
+fastLength = input(12, title="Fast Length")  // Fast length for MACD calculation
+slowLength = input(26, title="Slow Length")  // Slow length for MACD calculation
+signalSmoothing = input(9, title="Signal Smoothing")  // Signal smoothing for MACD
+
+// Calculate MACD values
+[macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
+
+// Pivot Lookback Length and Bar Range for Divergence
+var int lastPricePivotBar = na  // Variable to store the last bar index of pivot high for price
+var int lastMacdPivotBar = na  // Variable to store the last bar index of pivot high for MACD
+minBarRange = input.int(16, "Minimum Bar Range", minval=1)  // Minimum bar range for divergence consideration
+maxBarRange = input.int(50, "Maximum Bar Range", minval=1)  // Maximum bar range for divergence consideration
+pivotLength = input(5, title="Pivot Lookback Length")  // Length to look back for pivot highs
+
+// Function to find pivot highs
+findPivotHigh(src, length) =>
+    ta.highestbars(src, length) == 0
+
+// Get pivot highs for price and MACD
+pricePivotHigh = findPivotHigh(high, pivotLength)
+macdPivotHigh = findPivotHigh(macdLine, pivotLength)
+
+// Update last pivot bar index when a new pivot high is found
+if pricePivotHigh
+    lastPricePivotBar := bar_index
+
+if macdPivotHigh
+    lastMacdPivotBar := bar_index
+
+// Function to find pivot lows
+findPivotLow(src, length) =>
+    isPivotLow = ta.lowestbars(src, length) == 0
+    if isPivotLow
+        [src[length], bar_index[length]]
+    else
+        [na, na]
+
+// Get pivot lows for price and MACD
+[lowPricePivotVal, lowPricePivotBar] = findPivotLow(low, pivotLength)
+[macdPivotVal, macdPivotBar] = findPivotLow(macdLine, pivotLength)
+
+// Detect bullish divergence: price makes a lower low, MACD makes a higher low
+bullishDivergence = lowPricePivotVal and macdPivotVal and low[1] < ta.lowest(low, pivotLength * 2)[pivotLength] and macdLine[1] > ta.lowest(macdLine, pivotLength * 2)[pivotLength]
+
+// Function to check if the divergence is within the specified bar range
+isWithinRange(index) =>
+    index >= minBarRange and index <= maxBarRange
+
+// Detect bearish divergence: price makes a higher high, MACD makes a lower high
+bearishDivergence = pricePivotHigh and macdPivotHigh and (high > ta.highest(high, pivotLength * 2)) and (macdLine < ta.highest(macdLine, pivotLength * 2)) and isWithinRange(bar_index - nz(lastPricePivotBar, bar_index)) and isWithinRange(bar_index - nz(lastMacdPivotBar, bar_index))
+
+// Plot the bullish divergence with a green triangle below the price low
+plotshape(series=lowPricePivotVal and bullishDivergence ? low : na, title="Bullish Divergence", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
+
+// Plot the bearish divergence with a red triangle above the price high
+plotshape(series=bearishDivergence, title="Bearish Divergence", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
+
+
+// //@version=5
+// indicator("Price-MACD Divergence", shorttitle="Price-MACD Div", overlay=false)
+
+// // MACD inputs
+// fastLength = input(12, title="Fast Length")
+// slowLength = input(26, title="Slow Length")
+// signalSmoothing = input(9, title="Signal Smoothing")
+
+// // Calculate MACD values
+// [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
+
+// // Variables to track price highs, lows, and MACD highs, lows
+// var float priceHigh = na
+// var float priceLow = na
+// var float macdHigh = na
+// var float macdLow = na
+
+// // Track reversals in price
+// var float priceReversal = na
+
+// // Calculate the 15% threshold for reversals
+// threshold = priceHigh * 0.15
+
+// // Track the highest high and lowest low in price, and the MACD value at those price extremes
+// if close > ta.highest(high, 1)
+//     priceHigh := high
+//     macdHigh := macdLine
+
+// if close < ta.lowest(low, 1)
+//     priceLow := low
+//     macdLow := macdLine
+
+// // Track reversals in price
+// if low < threshold
+//     priceReversal := low
+
+// // Track bullish divergences
+// bullishDivergence = high > priceHigh and macdLine > macdHigh and ta.barssince(low <= priceReversal) < 5
+// plotshape(series=bullishDivergence ? low : na, title="Long", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
+
+// // Track bearish divergences
+// bearishDivergence = low < priceLow and macdLine < macdLow and ta.barssince(high >= priceReversal) < 5
+// plotshape(series=bearishDivergence ? high : na, title="Short", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
+
+
+// //@version=5
+// indicator("Price-MACD Divergence", shorttitle="Price-MACD Div", overlay=false)
+// fastlength = input(12, title = "Fast Length")
+// slowlength = input(24, title = "Slow Length")
+// signalSmoothing =  input(9,title = "Signal Smoothing")
+// [macdLine, sigLine, _] = ta.macd(close, fastlength, slowlength, signalSmoothing)
+
+
+//////Currently working on////////
+// //@version=5
+// indicator("MACD Divergence Detector", shorttitle="MACD Div", overlay=true)
+
+// // Input for MACD
+// fastLength = input(12, minval=1, title="Fast Length")
+// slowLength = input(26, minval=1, title="Slow Length")
+// signalSmoothing = input(9, minval=1, title="Signal Smoothing")
+
+// [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
+
+// // Inputs for lookback range
+// minLookback = input(16, title="Minimum Lookback Period")
+// maxLookback = input(50, title="Maximum Lookback Period")
+
+// // Function to find peaks and troughs within the range
+// isRecentHigh(highs, lookback) =>
+//     highestIndex = na
+//     for i = 0 to lookback - 1
+//         if not na(highs[i]) and (na(highestIndex) or highs[i] > highs[highestIndex])
+//             highestIndex := i
+//     highestIndex
+
+// isRecentLow(lows, lookback) =>
+//     lowestIndex = na
+//     for i = 0 to lookback - 1
+//         if not na(lows[i]) and (na(lowestIndex) or lows[i] < lows[lowestIndex])
+//             lowestIndex := i
+//     lowestIndex
+
+// // Arrays to store highs and lows
+// var float[] highs = array.new_float(0)
+// var float[] lows = array.new_float(0)
+
+// if bar_index > maxLookback
+//     array.unshift(highs, high)
+//     array.unshift(lows, low)
+//     if array.size(highs) > maxLookback
+//         array.pop(highs)
+//     if array.size(lows) > maxLookback
+//         array.pop(lows)
+
+// // Find recent highs and lows
+// recentHighIndex1 = isRecentHigh(highs, maxLookback)
+// recentLowIndex1 = isRecentLow(lows, maxLookback)
+// recentHighIndex2 = isRecentHigh(highs, recentHighIndex1)
+// recentLowIndex2 = isRecentLow(lows, recentLowIndex1)
+
+// plotshape(series=bar_index - recentHighIndex1 >= minLookback and bar_index - recentHighIndex1 <= maxLookback, title="Recent High", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
+// plotshape(series=bar_index - recentLowIndex1 >= minLookback and bar_index - recentLowIndex1 <= maxLookback, title="Recent Low", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
+
+// // Track the highest high and lowest low in price, and the MACD value at those price extremes
+// if close > ta.highest(high, 1)
+//     priceHigh := high
+//     macdHigh := macdLine
+
+// if close < ta.lowest(low, 1)
+//     priceLow := low
+//     macdLow := macdLine
+
+// bullishDivergence = high > priceHigh and macdLine > macdHigh and ta.barssince(low <= priceReversal) < 5
+// plotshape(series=bullishDivergence ? low : na, title="Long", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
+
+// // Track bearish divergences
+// bearishDivergence = low < priceLow and macdLine < macdLow and ta.barssince(high >= priceReversal) < 5
+// plotshape(series=bearishDivergence ? high : na, title="Short", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
+
+// plot(macd)
+
+End 1/16 update - Gino
+////////////////////////////////////
