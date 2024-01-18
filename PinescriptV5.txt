@@ -16,60 +16,43 @@
 //@version=5
 indicator("MACD Divergence Detector", shorttitle="MACD Div", overlay=true)
 
-// Input for MACD
-fastLength = input.int(12, minval=1, title="Fast Length")
-slowLength = input.int(26, minval=1, title="Slow Length")
-signalSmoothing = input.int(9, minval=1, title="Signal Smoothing")
+// MACD Inputs
+fastLength = input.int(12, title="Fast Length", minval=1)
+slowLength = input.int(26, title="Slow Length", minval=1)
+signalSmoothing = input.int(9, title="Signal Smoothing", minval=1)
 
 [macdLine, signalLine, _] = ta.macd(close, fastLength, slowLength, signalSmoothing)
 
-// Inputs for lookback range
+// Lookback Range for Highs
 minLookback = input(16, title="Minimum Lookback Period")
 maxLookback = input(50, title="Maximum Lookback Period")
 
-// Function to find peaks and troughs within the range
-isHigh = ta.highestbars(high, maxLookback) == 0 and ta.highestbars(high, minLookback) >= 0
-isLow = ta.lowestbars(low, maxLookback) == 0 and ta.lowestbars(low, minLookback) >= 0
+// Function to check for bearish divergence within a lookback range
+checkBearishDivergence() =>
+    float highestPrice = na
+    float highestMacd = na
+    for i = minLookback to maxLookback
+        if high[i] > highestPrice or na(highestPrice)
+            highestPrice := high[i]
+            highestMacd := macdLine[i]
+    if close > highestPrice and macdLine < highestMacd
+        true
+    else
+        false
 
-var float lastHighPrice = na
-var float lastHighMacd = na
-var float lastLowPrice = na
-var float lastLowMacd = na
+// Function to check for bullish divergence within a lookback range
+checkBullishDivergence() =>
+    float lowestPrice = na
+    float lowestMacd = na
+    for i = minLookback to maxLookback
+        if low[i] < lowestPrice or na(lowestPrice)
+            lowestPrice := low[i]
+            lowestMacd := macdLine[i]
+    if close < lowestPrice and macdLine > lowestMacd
+        true
+    else
+        false
 
-var float currentHighPrice = na
-var float currentHighMacd = na
-var float currentLowPrice = na
-var float currentLowMacd = na
-
-if isHigh
-    currentHighPrice := high
-    currentHighMacd := macdLine
-    if not na(lastHighPrice) and not na(lastHighMacd)
-        if currentHighPrice > lastHighPrice and currentHighMacd < lastHighMacd
-            lastHighPrice := currentHighPrice
-            lastHighMacd := currentHighMacd
-
-if isLow
-    currentLowPrice := low
-    currentLowMacd := macdLine
-    if not na(lastLowPrice) and not na(lastLowMacd)
-        if currentLowPrice < lastLowPrice and currentLowMacd > lastLowMacd
-            lastLowPrice := currentLowPrice
-            lastLowMacd := currentLowMacd
-
-// Plot bullish divergence
-plotshape(series=isHigh, title="Short Signal", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small)
-
-// Plot bearish divergence
-plotshape(series=isLow, title="Long Signal", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small)
-
-// Updating last high/low and MACD values
-if isHigh
-    lastHighPrice := high
-    lastHighMacd := macdLine
-else if isLow
-    lastLowPrice := low
-    lastLowMacd := macdLine
-
-plot(macdLine, title="MACD Line", color=color.blue)
-plot(signalLine, title="Signal Line", color=color.orange)
+// Plotting the divergence
+plotshape(series=checkBearishDivergence(), title="Bearish Divergence", location=location.abovebar, color=color.rgb(255, 0, 0), style=shape.triangledown, size=size.small)
+plotshape(series=checkBullishDivergence(), title="Bullish Divergence", location=location.belowbar, color=color.rgb(0, 255, 8), style=shape.triangleup, size=size.small)
