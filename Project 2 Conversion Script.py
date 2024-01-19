@@ -11,13 +11,15 @@
 # STD1
 # STD2
 # STD3
+import pandas as pd
+import yfinance as yf
+import numpy as np
 
-
-// Input variables for candle colors
+#Input variables for candle colors
 candleBullColor = input.color(color.green, title='Bullish Candle Color', group='Candle Colors')
 candleBearColor = input.color(color.red, title='Bearish Candle Color', group='Candle Colors')
 
-// Input variables for divergence colors
+#Input variables for divergence colors
 bullishDivergenceColor = input.color(color.rgb(255, 209, 58), title='Bullish Divergence Color', group='Divergence Colors')
 bearishDivergenceColor = input.color(color.rgb(73, 173, 255), title='Bearish Divergence Color', group='Divergence Colors')
 
@@ -25,42 +27,41 @@ var float buyVolume = 0.0
 var float sellVolume = 0.0
 var float delta = 0.0
 
-// Calculate Delta
+#Calculate Delta
 buyVolume := math.sum(volume * (close >= open ? 1 : 0), 1)
 sellVolume := math.sum(volume * (close < open ? 1 : 0), 1)
 delta := buyVolume - sellVolume
 
-// Moving Averages of Cumulative Delta
+#Moving Averages of Cumulative Delta
 cumulativeDelta = ta.cum(delta)
 maLength1 = input(20, title="Moving Average Length 1")
 maLength2 = input(50, title="Moving Average Length 2")
 maCumulativeDelta1 = ta.sma(cumulativeDelta, maLength1)
 maCumulativeDelta2 = ta.sma(cumulativeDelta, maLength2)
 
-// Color candles based on delta
+#Color candles based on delta
 barColor = delta >= 0 ? candleBullColor : candleBearColor
 
-// Convert Cumulative Delta to candles
+#Convert Cumulative Delta to candles
 cdOpen = cumulativeDelta[1]
 cdClose = cumulativeDelta
 cdHigh = math.max(cdOpen, cdClose)
 cdLow = math.min(cdOpen, cdClose)
 
-// Detect Divergences
+#Detect Divergences
 bullishDivergence = close > open and delta < delta[1]
 bearishDivergence = close < open and delta > delta[1]
 
-// Color the delta candles based on divergences
+#Color the delta candles based on divergences
 deltaColor = delta >= 0 ? (bullishDivergence ? bullishDivergenceColor : candleBullColor) : (bearishDivergence ? bearishDivergenceColor : candleBearColor)
 
-// Plot Cumulative Delta candles
+#Plot Cumulative Delta candles
 plotcandle(cdOpen, cdHigh, cdLow, cdClose, title='Cumulative Delta Candles', color=deltaColor, wickcolor=deltaColor)
 
-// Plot Moving Averages of Cumulative Delta as line charts
+#Plot Moving Averages of Cumulative Delta as line charts
 plot(maCumulativeDelta1, color=color.rgb(21, 255, 0), title="MA Cumulative Delta 1")
 plot(maCumulativeDelta2, color=color.rgb(255, 0, 81), title="MA Cumulative Delta 2")
-
-// 
+ 
 hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings")
 var anchor = input.string(defval = "Session", title="Anchor Period",
  options=["Session", "Week", "Month", "Quarter", "Year", "Decade", "Century", "Earnings", "Dividends", "Splits"], group="VWAP Settings")
@@ -144,7 +145,7 @@ plot(lowerBandValue2, "lower STD2", color=color.olive)
 plot(upperBandValue3, "upper STD3", color=color.teal)
 plot(lowerBandValue3, "lower STD3", color=color.teal)
 
-// Conditions
+#Conditions
 vwapShort1 = close > upperBandValue1
 vwapshort2 = close > upperBandValue2
 vwapshort3 = close > upperBandValue3
@@ -153,52 +154,49 @@ vwapLong1 = close < lowerBandValue1
 vwapLong2 = close < lowerBandValue2
 vwapLong3 = close < lowerBandValue3
 
-// Stop Loss/ Take profit
-
-
+#Stop Loss/ Take profit
 profitTarget = strategy.openprofit * 1.15 // 15% profit target
 trailStopLoss = strategy.position_avg_price * 0.95 // 5% stop loss
 
-// Define your trailing stop offset as a percentage
+#Define your trailing stop offset as a percentage
 trail_offset_percentage = input.float(2, title="Trailing Stop Offset (%)") / 100
 
-// Calculate the trailing stop level as a percentage of the close price
+#Calculate the trailing stop level as a percentage of the close price
 trail_stop_level = close * (1 - trail_offset_percentage)
 
 
 
 
-/////// Entry/ Exit Conditions
-// if (bearishDivergence and vwapShort1)
-//     strategy.entry("1st deviation short signal", strategy.short, qty = 3)
-// 	strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTarget, trail_offset = trail_stop_level)
-	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTargetL)
+#Entry/ Exit Conditions
+# if (bearishDivergence and vwapShort1)
+#   strategy.entry("1st deviation short signal", strategy.short, qty = 3)
+# 	strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTarget, trail_offset = trail_stop_level)
+ 	#strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation short signal", profit = profitTargetL)
 
-// if (bullishDivergence and vwapLong1)
-//     strategy.entry("1st deviation long signal", strategy.long, qty = 3)
-// 	strategy.exit(id = "1st deviation close long signal", from_entry = "1st deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation long signal", profit = profitTargetL)
+# if (bullishDivergence and vwapLong1)
+#   strategy.entry("1st deviation long signal", strategy.long, qty = 3)
+# 	strategy.exit(id = "1st deviation close long signal", from_entry = "1st deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
+ 	#strategy.exit(id = "1st deviation close short signal", from_entry = "1st deviation long signal", profit = profitTargetL)
 
 if (bearishDivergence and vwapshort2)
     strategy.entry("2nd deviation short signal", strategy.short, qty = 3)
 	strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", profit = profitTargetL)
+	#strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation short signal", profit = profitTargetL)
 
 if (bullishDivergence and vwapLong2)
     strategy.entry("2nd devition long signal", strategy.long, qty = 3)
 	strategy.exit(id = "2nd deviation close long signal", from_entry = "2nd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation long signal", profit = profitTargetL)
+	#strategy.exit(id = "2nd deviation close short signal", from_entry = "2nd deviation long signal", profit = profitTargetL)
 
 if (bearishDivergence and vwapshort3)
     strategy.entry("3rd deviation short signal", strategy.short, qty = 3)
 	strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", profit = profitTargetL)
+	#strategy.exit(id = "3rd deviation close short signal", from_entry = "3rd deviation short signal", profit = profitTargetL)
 
 if (bullishDivergence and vwapLong3)
     strategy.entry("3rd deviation long signal", strategy.long, qty = 3)
 	strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", trail_points = trailStopLoss, trail_offset = 0)
-	//strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", profit = profitTargetL)
-// Setting a 5% trailing stop loss
+	#strategy.exit(id = "3rd deviation close long signal", from_entry = "3rd deviation long signal", profit = profitTargetL)
 
 
 
